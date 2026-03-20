@@ -1,0 +1,326 @@
+/*
+ * Copyright (C) 2015-2026 IoT.bzh Company
+ * Author: José Bollo <jose.bollo@iot.bzh>
+ *
+ * $RP_BEGIN_LICENSE$
+ * Commercial License Usage
+ *  Licensees holding valid commercial IoT.bzh licenses may use this file in
+ *  accordance with the commercial license agreement provided with the
+ *  Software or, alternatively, in accordance with the terms contained in
+ *  a written agreement between you and The IoT.bzh Company. For licensing terms
+ *  and conditions see https://www.iot.bzh/terms-conditions. For further
+ *  information use the contact form at https://www.iot.bzh/contact.
+ *
+ * GNU General Public License Usage
+ *  Alternatively, this file may be used under the terms of the GNU General
+ *  Public license version 3. This license is as published by the Free Software
+ *  Foundation and appearing in the file LICENSE.GPLv3 included in the packaging
+ *  of this file. Please review the following information to ensure the GNU
+ *  General Public License requirements will be met
+ *  https://www.gnu.org/licenses/gpl-3.0.html.
+ * $RP_END_LICENSE$
+ */
+/*******************************************************************/
+/* top */
+html {
+	margin: 2px;
+	background: darkslategray url(background-iot.bzh.jpeg) center/cover;
+	color: lightsteelblue;
+	font-family: "Lucida Console", Monaco, monospace;
+	min-height: 100%;
+}
+
+/*******************************************************************/
+/* head */
+
+#logo {
+	background: url(iot-bzh-logo-small.png) center/50% no-repeat;
+	height: 60px;
+	width: 200px;
+}
+
+#title {
+	text-align: center;
+	font-weight: bolder;
+	font-size: 40px;
+	padding: 10px;
+	margin: auto;
+}
+
+#connected {
+	margin: 5px;
+	padding: 10px;
+	border: solid 4px;
+	border-radius: 7px;
+}
+
+#connected.ok { color: #8f8; }
+#connected.error { color: #f44; }
+
+/*******************************************************************/
+/* connection area */
+
+
+#params {
+	border: dashed 4px #8f8;
+	padding: 30px;
+	margin: 10px;
+	border-radius: 0px 50px;
+}
+
+/*******************************************************************/
+/* main area */
+
+#global {
+	background: #ff5;
+}
+
+.expert {
+	text-align: center;
+	font-weight: bolder;
+	font-size: larger;
+	text-decoration: underline;
+}
+
+#trace-events {
+	margin-left: 10px;
+	margin-right: 10px;
+}
+
+/*******************************************************************/
+/* setting for apis */
+
+#controls .api {
+	margin: 2px;
+	padding: 5px;
+	color: #ff5;
+	border: solid 2px;
+	border-radius: 7px;
+}
+#controls .api .opclo { background-color: #ff5; }
+
+#controls #apis .api { color: #fa5; }
+#controls #apis .api .opclo { background-color: #fa5; }
+
+#controls .api .name {
+	text-align: center;
+	font-weight: bolder;
+	font-size: larger;
+	text-decoration: underline;
+}
+
+#controls .api .desc {
+	text-align: center;
+}
+
+#controls .api .verb {
+	margin-left: 5px;
+}
+
+/*******************************************************************/
+/* setting of verbs */
+.verb .name {
+	font-weight: bolder;
+	text-decoration: underline;
+}
+
+.verb .desc {
+	font-size: smaller;
+}
+
+.verb .perm {
+	font-size: 8px;
+	text-align: right;
+	color: blue;
+}
+
+/*******************************************************************/
+/* setting for traces */
+
+.trace-box {
+	margin: 1px;
+	padding: 1px 1px 1px 10px;
+	border: solid 1px;
+	border-radius: 10px 0px;
+	font-size: smaller;
+}
+
+.trace-title {
+	font-weight: bolder;
+}
+.trace-item {
+	margin-left: 10px;
+}
+
+/*******************************************************************/
+/* tiny button */
+.x-button {
+	font-size: larger;
+	text-align: center;
+	margin: 5px;
+	padding: 10px;
+	border: dashed 2px #888;
+	border-radius: 0px 10px;
+	font-weight: bolder;
+}
+
+.x-button:hover {
+	border: solid 2px #aaa;
+}
+
+.x-button:active {
+	border: solid 4px cyan;
+	padding: 8px;
+}
+
+/*******************************************************************/
+/* display of logmsg */
+.logmsg {
+	margin-right: 2px;
+	margin-bottom: 3px;
+	padding: 2px;
+	font-size: smaller;
+	min-height: 20px;
+	border-radius: 3px;
+	border: solid 1px #f44; /* red by default */
+}
+
+.logmsg.call { border-color: #ee3; }
+.logmsg.retok { border-color: #8e8; }
+.logmsg.event { border-color: #d6f; }
+.logmsg.error { border-color: #f66; }
+.logmsg.trace { border-color: #aaa; }
+
+.logmsg .tag { text-align: center; color: black; font-weight: bolder; margin: -2px -2px 1px -2px; }
+.logmsg.call .tag { background: #ee3; }
+.logmsg.retok .tag { background: #8e8; }
+.logmsg.event .tag { background: #d6f; }
+.logmsg.error .tag { background: #f66; }
+.logmsg.trace .tag { background: #aaa; }
+
+/*******************************************************************/
+/* close box */
+.close {
+	width: 10px;
+	height: 10px;
+	background-image: url(cross.png);
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+/*******************************************************************/
+/* open / close */
+
+.opclo {
+	width: 10px;
+	height: 10px;
+	background-size: contain;
+	background-color: lightsteelblue;
+	border-radius: 3px;
+	padding: 2px;
+}
+
+.closed > .opclo { background-image: url(down.png); }
+.opened > .opclo { background-image: url(up.png); }
+
+/*******************************************************************/
+/* setting for traceevents */
+
+.traceevent {
+	margin: 1px;
+	padding: 2px;
+	min-height: 14px;
+	border: solid 1px;
+	border-radius: 0px 5px 5px 5px;
+}
+
+.separator {
+	margin: 25px 100px;
+	padding: 0px;
+	height: 2px;
+	background-color: #ee3;
+}
+
+.traceevent.opened {
+	background-color: rgba(0,0,0,0.6);
+}
+
+.traceevent.request, .trace-box.request { color: lightsteelblue; }
+.traceevent.daemon, .trace-box.daemon { color: #5af; }
+.traceevent.service, .trace-box.service { color: #0f0; }
+.traceevent.event, .trace-box.event { color: #f52; }
+.traceevent.global, .trace-box.global { color: white; }
+
+.traceevent.closed {
+	max-height: 16px;
+}
+
+.traceevent .close {
+	height: 16px;
+	margin: -1px 0px 0px 0px;
+	padding: 1px;
+	background-color: grey;
+}
+
+.traceevent .time {
+	height: 16px;
+	margin: -1px 0px 0px 8px;
+	padding: 1px 3px;
+	background-color: grey;
+	color: black;
+}
+
+.traceevent .tag {
+	margin-left: 10px;
+	font-weight: bolder;
+}
+
+.traceevent.closed:hover {
+	cursor: pointer;
+}
+
+.traceevent.closed:hover .content {
+	margin: 5px;
+	padding: 5px;
+	border: solid 4px;
+	border-radius: 0px 20px 20px 20px;
+	box-shadow: 10px 10px #dd8;
+	background-color: rgba(0,0,0,0.6);
+}
+
+.traceevent table.object tr td:nth-child(1) {
+	text-align: right;
+	font-weight: bolder;
+	text-decoration: underline;
+}
+
+.traceevent table.object tr td:nth-child(2) {
+	background-color: rgba(0,0,0,0.4);
+	padding: 0px 4px;
+	overflow: auto;
+}
+
+.traceevent table {
+	color: cyan;
+}
+
+/*******************************************************************/
+/* aesthetic clue */
+.select {
+	padding: 0px;
+}
+
+a:link { color: cyan; }
+a:link:hover, a:active { color: white; }
+a:visited { color: lightgrey; }
+
+/*******************************************************************/
+/* json format */
+
+.json.string { color: #fff; }
+.json.number { color: #ec0; }
+.json.boolean { color: #0f0; }
+.json.null { color: #0f0; }
+.json.key { color: #99f; }
+

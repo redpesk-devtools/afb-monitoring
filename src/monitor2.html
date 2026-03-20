@@ -1,0 +1,208 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+<!--
+ * Copyright (C) 2015-2025 IoT.bzh Company
+ * Author: José Bollo <jose.bollo@iot.bzh>
+ *
+ * $RP_BEGIN_LICENSE$
+ * Commercial License Usage
+ *  Licensees holding valid commercial IoT.bzh licenses may use this file in
+ *  accordance with the commercial license agreement provided with the
+ *  Software or, alternatively, in accordance with the terms contained in
+ *  a written agreement between you and The IoT.bzh Company. For licensing terms
+ *  and conditions see https://www.iot.bzh/terms-conditions. For further
+ *  information use the contact form at https://www.iot.bzh/contact.
+ *
+ * GNU General Public License Usage
+ *  Alternatively, this file may be used under the terms of the GNU General
+ *  Public license version 3. This license is as published by the Free Software
+ *  Foundation and appearing in the file LICENSE.GPLv3 included in the packaging
+ *  of this file. Please review the following information to ensure the GNU
+ *  General Public License requirements will be met
+ *  https://www.gnu.org/licenses/gpl-3.0.html.
+ * $RP_END_LICENSE$
+-->
+    <title>Monitoring</title>
+    <link href="monitor-base.css" rel="stylesheet">
+    <link href="monitor-demo.css" rel="stylesheet" title="demo">
+    <link href="monitor-pastel.css" rel="alternate stylesheet" title="pastel">
+    <script type="text/javascript" src="underscore-umd-min.js"></script>
+    <script type="text/javascript" src="AFB2.js"></script>
+    <script type="text/javascript" src="monitor2.js"></script>
+
+<body id="root" class="-flex-v off" onload="init();">
+  <div id="head" class="clearfix">
+    <div id="logo"></div>
+    <div id="connected">Not Connected</div>
+    <div id="title">Monitoring</div>
+  </div>
+  <div id="work" class="-flex-fill -flex-h">
+    <div id="controls" class="-box-out">
+      <div class="-box-in">
+        <div id="all" class="api opened" data-apiname="*">
+          <div class="opclo"></div>
+          <div class="name">{ALL}</div>
+          <div class="desc">Settings for all</div>
+          <hr>
+          <div class="verbosity">placeholder</div>
+          <hr class="closedoff">
+          <div class="closedon">traces...</div>
+          <div class="trace closedoff"></div>
+        </div>
+        <div id="common" class="api" data-apiname="">
+          <div class="name">{COMMON}</div>
+          <div class="desc">Settings without apis</div>
+          <hr>
+          <div class="verbosity">placeholder</div>
+        </div>
+        <div id="apis">
+        </div>
+      </div>
+    </div>
+    <div id="middle" class="-flex-v">
+      <div id="params" class="clearfix">
+        <div>host: <input type="text" id="param-host" size="50" value="localhost"></input></div>
+        <div>port: <input type="text" id="param-port" size="10" value="1234"></input></div>
+        <div>token: <input type="text" id="param-token" size="33" value="HELLO"></input></div>
+      </div>
+      <div class="-flex-fill -box-out">
+        <div id="trace-events" class="-box-in">
+        </div>
+      </div>
+    </div>
+
+      <div id="menu" class="-flex-v">
+        <div id="connect" class="x-button">Connect</div>
+        <div id="disconnect" class="x-button">Disconnect</div>
+        <div id="style" class="x-button">style</div>
+        <div id="autoscroll" class="x-button">Stop scroll</div>
+        <div id="addsep" class="x-button">Add separator</div>
+        <div id="droptracevts" class="x-button">Clear traces</div>
+        <div id="experts" class="x-button closed">
+          <div class="opclo"></div>
+          {EXPERTS}
+        </div>
+        <div id="expert-pane" class="-flex-fill -flex-v">
+          <div id="stopmsgs" class="x-button">Stop logs</div>
+          <div id="dropmsgs" class="x-button">Clear logs</div>
+          <div class="-flex-fill -box-out">
+              <div id="logmsgs" class="-box-in"></div>
+          </div>
+        </div>
+      </div>
+  </div>
+
+<!-- template for APIS -->
+  <template id="t-api">
+    <div class="api closed" data-apiname="">
+      <div class="opclo"></div>
+      <div class="name"></div>
+      <div class="desc"></div>
+      <div class="closedoff">
+        <hr>
+        <div class="verbosity">placeholder</div>
+        <hr>
+        <div class="closed">
+          <div class="opclo"></div>
+          <div class="closedon">verbs...</div>
+          <div class="verbs closedoff"></div>
+        </div>
+        <div class="closed">
+          <div class="opclo"></div>
+          <div class="closedon">traces...</div>
+          <div class="trace closedoff"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+<!-- template for VERBS of APIS -->
+  <template id="t-verb">
+    <div class="verb" data-verb="">
+      <div class="vdsc">
+        <span class="name"></span>
+        <span class="colon">:</span>
+        <span class="desc"></span>
+      </div>
+      <div class="perm"></div>
+    </div>
+  </template>
+
+<!-- template for ERRORS -->
+  <template id="t-logmsg">
+    <div class="logmsg">
+      <div class="close"></div>
+      <div class="tag"></div>
+      <div class="content"></div>
+    </div>
+  </template>
+
+<!-- template for VERBOSITY -->
+  <template id="t-verbosity">
+    <div class="verbosity">
+      <span>Verbosity:</span>
+      <select class="select">
+        <option value="error">error</option>
+        <option value="warning">warning</option>
+        <option value="notice">notice</option>
+        <option value="info">info</option>
+        <option value="debug">debug</option>
+      </select>
+    </div>
+  </template>
+
+<!-- template for TRACE -->
+  <template id="t-trace">
+    <div class="trace closedoff">
+      <div class="trace-box request" data-trace="request">
+        <div class="trace-title">trace requests: <a target="_blank" href="https://docs.redpesk.bzh/en/master/developer-guides/reference-v3/func-req.html">(doc)</a></div>
+        <div class="trace-item"><input type="radio" value="no" checked>no</input></div>
+        <div class="trace-item"><input type="radio" value="common">common</input></div>
+        <div class="trace-item"><input type="radio" value="extra">extra</input></div>
+        <div class="trace-item"><input type="radio" value="all">all</input></div>
+      </div>
+      <div class="trace-box service" data-trace="service">
+        <div class="trace-title">trace service call: <a target="_blank" href="https://docs.redpesk.bzh/docs/en/master/developer-guides/reference-v3/func-service.html">(doc)</a></div>
+        <div class="trace-item"><input type="radio" value="no" checked>no</input></div>
+        <div class="trace-item"><input type="radio" value="all">all</input></div>
+      </div>
+      <div class="trace-box daemon" data-trace="daemon">
+        <div class="trace-title">trace daemon: <a target="_blank" href="https://docs.redpesk.bzh/docs/en/master/developer-guides/reference-v3/func-daemon.html">(doc)</a></div>
+        <div class="trace-item"><input type="radio" value="no" checked>no</input></div>
+        <div class="trace-item"><input type="radio" value="common">common</input></div>
+        <div class="trace-item"><input type="radio" value="extra">extra</input></div>
+        <div class="trace-item"><input type="radio" value="all">all</input></div>
+      </div>
+      <div class="trace-box event" data-trace="event">
+        <div class="trace-title">trace events: <a target="_blank" href="https://docs.redpesk.bzh/docs/en/master/developer-guides/reference-v3/func-event.html">(doc)</a></div>
+        <div class="trace-item"><input type="radio" value="no" checked>no</input></div>
+        <div class="trace-item"><input type="radio" value="common">common</input></div>
+        <div class="trace-item"><input type="radio" value="extra">extra</input></div>
+        <div class="trace-item"><input type="radio" value="all">all</input></div>
+      </div>
+      <div class="trace-box global" data-trace="global">
+        <div class="trace-title">trace globals:</div>
+        <div class="trace-item"><input type="radio" value="no" checked>no</input></div>
+        <div class="trace-item"><input type="radio" value="all">all</input></div>
+      </div>
+    </div>
+  </template>
+
+<!-- template for EVENTS -->
+  <template id="t-traceevent">
+    <div class="traceevent closed">
+      <div class="close"></div>
+      <div class="time"></div>
+      <div class="tag"></div>
+      <div class="content"></div>
+    </div>
+  </template>
+
+<!-- template for SEPARATOR -->
+  <template id="t-separator">
+    <div class="separator"></div>
+  </template>
+
+

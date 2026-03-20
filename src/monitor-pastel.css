@@ -1,0 +1,280 @@
+/*
+ * Copyright (C) 2015-2026 IoT.bzh Company
+ * Author: José Bollo <jose.bollo@iot.bzh>
+ *
+ * $RP_BEGIN_LICENSE$
+ * Commercial License Usage
+ *  Licensees holding valid commercial IoT.bzh licenses may use this file in
+ *  accordance with the commercial license agreement provided with the
+ *  Software or, alternatively, in accordance with the terms contained in
+ *  a written agreement between you and The IoT.bzh Company. For licensing terms
+ *  and conditions see https://www.iot.bzh/terms-conditions. For further
+ *  information use the contact form at https://www.iot.bzh/contact.
+ *
+ * GNU General Public License Usage
+ *  Alternatively, this file may be used under the terms of the GNU General
+ *  Public license version 3. This license is as published by the Free Software
+ *  Foundation and appearing in the file LICENSE.GPLv3 included in the packaging
+ *  of this file. Please review the following information to ensure the GNU
+ *  General Public License requirements will be met
+ *  https://www.gnu.org/licenses/gpl-3.0.html.
+ * $RP_END_LICENSE$
+ */
+/*******************************************************************/
+/* top */
+body {
+	margin: 0px;
+}
+
+/*******************************************************************/
+/* head */
+
+#title {
+	font-weight: bolder;
+	font-size: larger;
+	padding: 10px;
+	margin: 5px;
+}
+
+#connected {
+	margin: 5px;
+	padding: 10px;
+	border: solid 2px black;
+	border-radius: 7px;
+}
+
+#connected.ok {
+	background: #afa;
+}
+
+#connected.error {
+	background: #f88;
+}
+
+/*******************************************************************/
+/* connection area */
+
+
+#params {
+	border: dashed 4px red;
+	background: #fde;
+	padding: 10px;
+	margin: 10px;
+	border-radius: 0px 50px;
+}
+
+/*******************************************************************/
+/* main area */
+
+#global {
+	background: #ff5;
+}
+
+.expert {
+	text-align: center;
+	font-weight: bolder;
+	font-size: larger;
+	text-decoration: underline;
+}
+
+/*******************************************************************/
+/* setting for apis */
+
+#controls .api {
+	margin: 2px;
+	padding: 5px;
+	border: solid 1px black;
+	background: #ff5;
+	border-radius: 7px;
+}
+
+#controls #apis .api {
+	background: #fa5;
+}
+
+#controls .api .name {
+	text-align: center;
+	font-weight: bolder;
+	font-size: larger;
+	text-decoration: underline;
+}
+
+#controls .api .desc {
+	text-align: center;
+}
+
+#controls .api .verb {
+	margin-left: 5px;
+}
+
+/*******************************************************************/
+/* setting of verbs */
+.verb .name {
+	font-weight: bolder;
+	text-decoration: underline;
+}
+
+.verb .desc {
+	font-size: smaller;
+}
+
+.verb .perm {
+	font-size: 8px;
+	text-align: right;
+	color: blue;
+}
+
+/*******************************************************************/
+/* setting for traces */
+
+.trace-box {
+	margin: 1px;
+	padding: 1px 1px 1px 10px;
+	border: solid 1px black;
+	border-radius: 10px 0px;
+	font-size: smaller;
+}
+
+.trace-title {
+	font-weight: bolder;
+}
+.trace-item {
+	margin-left: 10px;
+}
+
+/*******************************************************************/
+/* tiny button */
+.x-button {
+	font-size: larger;
+	text-align: center;
+	margin: 5px;
+	padding: 10px;
+	border: solid 2px grey;
+	border-radius: 7px;
+	background: #ffc;
+	font-weight: bolder;
+}
+
+.x-button:hover {
+	background: #fcc;
+	border: solid 2px black;
+}
+
+.x-button:active {
+	background: #fcc;
+	border: solid 3px black;
+	margin: 4px;
+}
+
+/*******************************************************************/
+/* display of logmsg */
+.logmsg {
+	background: #f44; /* red by default */
+	margin: 1px;
+	padding: 2px;
+	font-size: smaller;
+	border-radius: 3px;
+	min-height: 20px;
+}
+
+.logmsg.call { background: #ee3; }
+.logmsg.retok { background: #8e8; }
+.logmsg.event { background: #d6f; }
+.logmsg.error { background: #f66; }
+.logmsg.trace { background: #aaa; }
+
+/*******************************************************************/
+/* close box */
+.close {
+	width: 16px;
+	height: 16px;
+	background-image: url(cross.png);
+	background-size: contain;
+}
+
+/*******************************************************************/
+/* open / close */
+
+.opclo {
+	width: 16px;
+	height: 16px;
+	background-size: contain;
+	background-color: #eec;
+	border-radius: 3px;
+	padding: 1px;
+	border: solid 1px black;
+}
+
+.closed > .opclo { background-image: url(down.png); }
+.opened > .opclo { background-image: url(up.png); }
+
+/*******************************************************************/
+/* setting for traceevents */
+
+.traceevent {
+	margin: 1px;
+	padding: 2px;
+	min-height: 16px;
+	border: solid 1px black;
+	border-radius: 0px 5px 5px 5px;
+}
+
+.separator {
+	margin: 8px 100px;
+	padding: 0px;
+	height: 2px;
+	background-color: black;
+}
+
+.traceevent.request, .trace-box.request { background: #ffd; }
+.traceevent.daemon, .trace-box.daemon { background: #fdf; }
+.traceevent.service, .trace-box.service { background: #ddf; }
+.traceevent.event, .trace-box.event { background: #dfd; }
+.traceevent.global, .trace-box.global { background: #eee; }
+
+.traceevent.closed {
+	max-height: 16px;
+}
+
+.traceevent .time {
+	height: 16px;
+	margin: -2px 8px 2px -2px;
+	padding: 1px 3px;
+	background: black;
+	color: white;
+	font-weight: bolder;
+}
+
+.traceevent.closed:hover .content {
+	margin: 5px;
+	padding: 5px;
+	border: solid 1px black;
+	border-radius: 0px 5px 5px 5px;
+	box-shadow: 10px 10px grey;
+}
+
+.traceevent table.object tr td:nth-child(1) {
+	text-align: right;
+}
+
+.traceevent table.object tr td:nth-child(2) {
+	border: solid 1px black;
+	font-weight: bolder;
+	padding: 0px 4px;
+}
+
+/*******************************************************************/
+/* aesthetic clue */
+.select {
+	padding: 0px;
+}
+
+/*******************************************************************/
+/* json format */
+
+.json.string { color: teal; }
+.json.number { color: darkorange; }
+.json.boolean { color: deepskyblue; }
+.json.null { color: magenta; }
+.json.key { color: red; }
+
