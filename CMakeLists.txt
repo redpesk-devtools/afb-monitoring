@@ -25,9 +25,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 
 project(afb-monitoring
-	VERSION 0.99.0
+	VERSION 1.0.0
 	DESCRIPTION "Monitoring of afb-binder"
-	HOMEPAGE_URL "https://github.com/redpesk-devtools/afb-monitoring")
+	HOMEPAGE_URL "https://github.com/redpesk-devtools/afb-monitoring"
+	LANGUAGES NONE)
 
 include(GNUInstallDirs)
 
