@@ -33,9 +33,8 @@ include(GNUInstallDirs)
 
 ###########################################################################
 
-set(MONITORING_INSTALL_DIR ${CMAKE_INSTALL_FULL_DATADIR}/afb-monitoring CACHE STRING "Path to install monitoring")
+set(MONITORING_INSTALL_DIR ${CMAKE_INSTALL_DATADIR}/afb-monitoring CACHE STRING "Path to install monitoring")
 
-file(GLOB monit_files ${CMAKE_CURRENT_SOURCE_DIR}/src/*)
 install(
   FILES
 
