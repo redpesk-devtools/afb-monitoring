@@ -29,10 +29,12 @@
     <link href="monitor-demo.css" rel="stylesheet" title="demo">
     <link href="monitor-pastel.css" rel="alternate stylesheet" title="pastel">
     <script type="text/javascript" src="underscore-umd-min.js"></script>
-    <script type="text/javascript" src="AFB2.js"></script>
-    <script type="text/javascript" src="monitor2.js"></script>
+    <script type="module">
+        import { init } from './monitor2.js';
+        document.body.onload = init;
+    </script>
 
-<body id="root" class="-flex-v off" onload="init();">
+  <body id="root" class="-flex-v off">
   <div id="head" class="clearfix">
     <div id="logo"></div>
     <div id="connected">Not Connected</div>

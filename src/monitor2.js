@@ -21,7 +21,9 @@
  * $RP_END_LICENSE$
  */
 
-var ws;
+import { afbWsConnect } from './AFB2.js';
+
+var afbws;
 
 var t_api;
 var t_verb;
@@ -220,39 +222,40 @@ function next_style(evt) {
 /***************************************************************/
 /* helpers for managing connection *****************************/
 
-function disconnect(status) {
+function disconnect(msg, cls) {
 	class_toggle(root_node, { on: "off" }, "off");
-	connected_node.innerHTML = "Connection Closed";
-	connected_node.className = status;
-	if (ws) {
+	connected_node.innerHTML = "Connection "+msg;
+	connected_node.className = cls || 'ok';
+	apis = {};
+	apis_node.innerHTML = "";
+	if (afbws) {
 		untrace_all();
-		ws.onClose = ws.onError = null;
-		ws.close();
-		ws = null;
+		afbws.onclose = afbws.onerror = null;
+		afbws.close();
+		afbws = null;
 	}
 }
 
 function connect() {
-	disconnect();
-	var url = getURL({ hostname: value_at("param-host"),
-		           port: value_at("param-port") });
-	connectAfbWebsocket(
-		url,
-		on_connection_success,
-		function(reason) {
-			disconnect("connection failed: " + reason);
-		},
-		value_at("param-token"),
-		value_at("param-session"));
+	disconnect('in progress ...');
+	afbWsConnect({
+		hostname: value_at("param-host"),
+		port: value_at("param-port"),
+		onopen: on_connection_success,
+		onabort: function(reason) { disconnect("aborted! " + reason, 'error'); },
+		token: value_at("param-token"),
+		session: value_at("param-session")
+	});
 }
 
 function on_connection_success(itf) {
-	ws = itf;
+	afbws = itf;
 	class_toggle(root_node, { off: "on" }, "on");
-	connected_node.innerHTML = "Connected " + ws.url;
+	connected_node.innerHTML = "Connected " + afbws.url;
 	connected_node.className = "ok";
-	ws.addEvent("*", gotevent);
-	ws.onClose = function() { disconnect("closed"); }
+	afbws.addEvent("*", gotevent);
+	afbws.onclose = function() { disconnect("closed"); }
+	afbws.onerror = function() { disconnect("failure,'error'"); }
 	untrace_all();
 	for_all_nodes(all_node, ".trace-box", update_trace_box);
 	do_call("monitor", "get", {apis: true, verbosity: true}, on_got_apis);
@@ -261,6 +264,7 @@ function on_connection_success(itf) {
 /***************************************************************/
 /* xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx *****************************/
 
+export
 function init() {
 	/* init styling */
 	styles = makecss();
@@ -323,7 +327,7 @@ function init() {
 }
 
 function on_disconnect() {
-	disconnect("ok");
+	disconnect("off");
 }
 
 function on_connect(evt) {
@@ -335,18 +339,20 @@ function untrace_all() {
 }
 
 function do_call(api, verb, request, onreply) {
-	var call = api + "/" + verb + "(" + JSON.stringify(request, null, 1) + ")";
-	add_logmsg("send request", call, "call");
-	ws.call(api, verb, [request],
-		function(code, args) {
-			add_logmsg("receive ", call + " -> " + String(code) + ": " + JSON.stringify(args, null, 1), code >= 0 ? "retok" : "reterr");
-			if (onreply) {
-				var args = args[0];
-				if (args.jtype == "afb-reply")
-					args = args.response;
-				onreply(args);
-			}
-		});
+	if (afbws) {
+		var call = api + "/" + verb + "(" + JSON.stringify(request, null, 1) + ")";
+		add_logmsg("send request", call, "call");
+		afbws.call(api, verb, [request],
+			function(code, args) {
+				add_logmsg("receive ", call + " -> " + String(code) + ": " + JSON.stringify(args, null, 1), code >= 0 ? "retok" : "reterr");
+				if (onreply) {
+					var args = args[0];
+					if (args.jtype == "afb-reply")
+						args = args.response;
+					onreply(args);
+				}
+			});
+	}
 }
 
 /* show all verbosities */
@@ -591,16 +597,17 @@ function makeobj(obj, deep, ekey, eobj) {
 
 function gotevent(obj, name) {
 	obj = obj[0];
-	if (obj.event != "monitor/trace")
-		add_logmsg("unexpected event!", JSON.stringify(obj, null, 1), "event");
+	if (name != "monitor/trace")
+		add_logmsg("unexpected event "+name+" !", JSON.stringify(obj, null, 1), "event");
 	else {
 		add_logmsg("trace event", JSON.stringify(obj, null, 1), "trace");
+		if (obj.jtype == 'afb-event')
+			obj = obj.data;
 		gottraceevent(obj);
 	}
 }
 
-function gottraceevent(obj) {
-	var data = obj.data;
+function gottraceevent(data) {
 	var type = data.type;
 	var desc = data[type];
 	if (!show_monitor_events) {
@@ -608,7 +615,7 @@ function gottraceevent(obj) {
 			return;
 	}
 	var x = document.importNode(t_traceevent, true);
-	x.dataset.event = obj;
+	x.dataset.event = data;
 	get(".close", x).onclick = function(evt){x.remove();};
 	x.className = x.className + " " + type;
 	get(".time", x).textContent = data.time;
