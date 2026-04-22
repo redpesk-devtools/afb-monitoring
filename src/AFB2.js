@@ -135,6 +135,10 @@ class AfbWs {
  * - expected: a string or an array of allowed type of connections.
  *             currently possible protocols are: 'rpc', 'json1'
  *
+ * - session: if present, the string identifying the session
+ *
+ * - token: if present, the string of the bearer token
+ *
  * - protocol: if url misses, the protocol to use
  *
  * - hostname: if url misses, the hostname to use
