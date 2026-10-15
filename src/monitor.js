@@ -21,8 +21,9 @@
  * $RP_END_LICENSE$
  */
 
-var afb;
-var ws;
+import { afbWsConnect } from './AFB2.js';
+
+var afbws;
 
 var t_api;
 var t_verb;
@@ -53,47 +54,219 @@ var show_monitor_events = false;
 
 _.templateSettings = { interpolate: /\{\{(.+?)\}\}/g };
 
-function untrace_all() {
-	do_call("monitor/trace", {drop: true});
+/***************************************************************/
+/* helpers for DOM *********************************************/
+
+function at(id) { return document.getElementById(id); }
+function value_at(id) { let n = at(id); return n && n.value; }
+
+function for_all_nodes(root, sel, fun) {
+	(root ? root : document).querySelectorAll(sel).forEach(fun);
 }
 
-function disconnect(status) {
-	class_toggle(root_node, { on: "off" }, "off");
-	connected_node.innerHTML = "Connection Closed";
-	connected_node.className = status;
-	if (ws) {
-		untrace_all();
-		ws.onclose = ws.onabort = null;
-		ws.close();
+function get(sel,x) {
+	if (!x)
+		x = document;
+	var r = x.querySelector(sel);
+	return r;
+}
+
+function plug(target, sel, node) {
+	var x = get(sel, target);
+	var n = target.ownerDocument.importNode(node, true);
+	x.parentNode.insertBefore(n, x);
+	x.parentNode.removeChild(x);
+}
+
+function class_toggle(node, assoc, defval) {
+	var matched = false;
+	var cs = node.className.split(" ").map(
+		function(x){
+			if (!matched && (x in assoc)) {
+				matched = true;
+				return assoc[x];
+			}
+			return x == defval ? "" : x;
+		}).join(" ");
+	if (!matched && defval)
+		cs = cs + " " + defval;
+	node.className = cs;
+}
+
+/***************************************************************/
+/* helpers for autoscroll **************************************/
+
+function start_autoscroll(val) {
+	at("autoscroll").textContent =
+		(autoscroll = val) ? "Stop scroll" : "Start scroll";
+}
+
+function toggle_autoscroll() {
+	start_autoscroll(!autoscroll);
+}
+
+function show(x) {
+	if (autoscroll)
+		x.scrollIntoView();
+}
+
+/***************************************************************/
+/* helpers for logging *****************************************/
+
+function start_logmsgs(val) {
+	at("stopmsgs").textContent =
+		(msgs = val) ? "Stop logs" : "Get logs";
+}
+
+function toggle_logmsgs() {
+	start_logmsgs(!msgs);
+}
+
+function drop_all_logmsgs() {
+	logmsgs_node.innerHTML = "";
+}
+
+function add_logmsg(tag, content, add) {
+	if (!msgs) return;
+	var x = document.importNode(t_logmsg, true);
+	get(".tag", x).textContent = tag;
+	get(".content", x).textContent = content;
+	get(".close", x).onclick = function(evt){x.remove();};
+	if (add)
+		x.className = x.className + " " + add;
+	logmsg_add(x);
+}
+
+function logmsg_add(x) {
+	if (!msgs) return;
+	logmsgs_node.append(x);
+	show(x);
+}
+
+/***************************************************************/
+/* helpers for tracing *****************************************/
+
+function drop_all_trace_events() {
+	trace_events_node.innerHTML = "";
+}
+
+function on_toggle_traceevent(evt) {
+	if (getSelection() != "") return;
+	var node = evt.target;
+	while(node && node.parentElement != trace_events_node)
+		node = node.parentElement;
+	node && toggle_opened_closed(node);
+}
+
+function trace_events_add(x) {
+	trace_events_node.append(x);
+	show(x);
+}
+
+/***************************************************************/
+/* helpers for separators **************************************/
+
+function add_separator() {
+	trace_events_add(document.importNode(t_separator, true));
+	logmsg_add(document.importNode(t_separator, true));
+}
+
+/***************************************************************/
+/* helpers for managing styles *********************************/
+
+function makecss()
+{
+	var i, l, a, links, x;
+
+	x = { idx: 0, byidx: [], byname: {}, names: [] };
+	links = document.getElementsByTagName("link");
+	for (i = 0 ; i < links.length ; i++) {
+		l = links[i];
+		if (l.title && l.rel.indexOf( "stylesheet" ) != -1) {
+			if (!(l.title in x.byname)) {
+				x.byname[l.title] = x.byidx.length;
+				x.names.push(l.title);
+				x.byidx.push([]);
+			}
+			x.byidx[x.byname[l.title]].push(l);
+		}
 	}
-	ws = null;
-	if (afb)
-		at("param-token").value = afb.context.token;
-	afb = null;
-}
 
-function on_disconnect() {
-	disconnect("ok");
-}
+	x.set = function(id) {
+		if (id in x.byname)
+			id = x.byname[id];
+		if (id in x.byidx) {
+			var i, j, a, b;
+			x.idx = id;
+			a = x.byidx;
+			for (i = 0 ; i < a.length ; i++) {
+				b = a[i];
+				for (j = 0 ; j < b.length ; j++)
+					b[j].disabled = i != id;
+			}
+		}
+	};
 
-function connect() {
-	ws && ws.close();
-	afb = new AFB({
-		host: at("param-host").value + ":" + at("param-port").value,
-		token: at("param-token").value
-	});
-	ws = new afb.ws(onopen, onabort);
-}
+	x.next = function() {
+		x.set((x.idx + 1) % x.byidx.length);
+	};
 
-function on_connect(evt) {
-	connect();
+	x.set(0);
+	return x;
 }
 
 function next_style(evt) {
 	styles.next();
 }
 
+/***************************************************************/
+/* helpers for managing connection *****************************/
+
+function disconnect(msg, cls) {
+	class_toggle(root_node, { on: "off" }, "off");
+	connected_node.innerHTML = "Connection "+msg;
+	connected_node.className = cls || 'ok';
+	apis = {};
+	apis_node.innerHTML = "";
+	if (afbws) {
+		untrace_all();
+		afbws.onclose = afbws.onerror = null;
+		afbws.close();
+		afbws = null;
+	}
+}
+
+function connect() {
+	disconnect('in progress ...');
+	afbWsConnect({
+		hostname: value_at("param-host"),
+		port: value_at("param-port"),
+		onopen: on_connection_success,
+		onabort: function(reason) { disconnect("aborted! " + reason, 'error'); },
+		token: value_at("param-token"),
+		session: value_at("param-session")
+	});
+}
+
+function on_connection_success(itf) {
+	afbws = itf;
+	class_toggle(root_node, { off: "on" }, "on");
+	connected_node.innerHTML = "Connected " + afbws.url;
+	connected_node.className = "ok";
+	afbws.addEvent("*", gotevent);
+	afbws.onclose = function() { disconnect("closed"); }
+	afbws.onerror = function() { disconnect("failure,'error'"); }
+	untrace_all();
+	for_all_nodes(all_node, ".trace-box", update_trace_box);
+	do_call("monitor", "get", {apis: true, verbosity: true}, on_got_apis);
+}
+
+/***************************************************************/
+/* xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx *****************************/
+
+export
 function init() {
+	/* init styling */
 	styles = makecss();
 	at("style").onclick = next_style;
 
@@ -106,6 +279,7 @@ function init() {
 	t_trace = at("t-trace").content.firstElementChild;
 	t_separator = at("t-separator").content.firstElementChild;
 
+	/* get interface nodes */
 	root_node = at("root");
 	connected_node = at("connected");
 	trace_events_node = at("trace-events");
@@ -113,151 +287,80 @@ function init() {
 	apis_node = at("apis");
 	all_node = at("all");
 
+	/* plug items */
 	plug(t_api, ".verbosity", t_verbosity);
 	plug(t_api, ".trace", t_trace);
 	plug(all_node, ".trace", t_trace);
 	plug(all_node, ".verbosity", t_verbosity);
 	plug(at("common"), ".verbosity", t_verbosity);
-	for_all_nodes(root_node, ".opclo", function(n){n.onclick = on_toggle_opclo});
-	for_all_nodes(root_node, ".opclo ~ :not(.closedoff)", function(n){n.onclick = on_toggle_opclo});
-	for_all_nodes(root_node, ".verbosity select", function(n){n.onchange = set_verbosity});
-	for_all_nodes(root_node, ".trace-item input", function(n){n.onchange = on_trace_change});
+
+	/* connect handlers */
+	for_all_nodes(root_node, ".opclo",
+		function(n){n.onclick = on_toggle_opclo});
+	for_all_nodes(root_node, ".opclo ~ :not(.closedoff)",
+		function(n){n.onclick = on_toggle_opclo});
+	for_all_nodes(root_node, ".verbosity select",
+		function(n){n.onchange = set_verbosity});
+	for_all_nodes(root_node, ".trace-item input",
+		function(n){n.onchange = on_trace_change});
+	document.onbeforeunload = on_disconnect;
 	at("disconnect").onclick = on_disconnect;
 	at("connect").onclick = on_connect;
 	at("droptracevts").onclick = drop_all_trace_events;
 	at("dropmsgs").onclick = drop_all_logmsgs;
 	at("stopmsgs").onclick = toggle_logmsgs;
-	start_logmsgs(false);
-	trace_events_node.onclick = on_toggle_traceevent;
 	at("autoscroll").onclick = toggle_autoscroll;
-	start_autoscroll(true);
 	at("addsep").onclick = add_separator;
 	at("experts").onclick = toggle_experts;
+	trace_events_node.onclick = on_toggle_traceevent;
+	start_logmsgs(false);
+	start_autoscroll(true);
 
+	/* init connection */
 	at("param-host").value = document.location.hostname;
 	at("param-port").value = document.location.port;
 	var args = new URLSearchParams(document.location.search.substring(1));
 	at("param-token").value = args.get("x-afb-token") || args.get("token") || "HELLO";
 
-	document.onbeforeunload = on_disconnect;
-
+	/* connect */
 	connect();
 }
 
-function for_all_nodes(root, sel, fun) {
-	(root ? root : document).querySelectorAll(sel).forEach(fun);
+function on_disconnect() {
+	disconnect("off");
 }
 
-function get(sel,x) {
-	if (!x)
-		x = document;
-	var r = x.querySelector(sel);
-	return r;
-}
-function at(id) { return document.getElementById(id); }
-
-function plug(target, sel, node) {
-	var x = get(sel, target);
-	var n = target.ownerDocument.importNode(node, true);
-	x.parentNode.insertBefore(n, x);
-	x.parentNode.removeChild(x);
+function on_connect(evt) {
+	connect();
 }
 
-function onopen() {
-	class_toggle(root_node, { off: "on" }, "on");
-	connected_node.innerHTML = "Connected " + ws.url;
-	connected_node.className = "ok";
-	ws.onevent("*", gotevent);
-	ws.onclose = onabort;
-	untrace_all();
-	for_all_nodes(all_node, ".trace-box", update_trace_box);
-	do_call("monitor/get", {apis:true,verbosity:true}, on_got_apis, on_error_apis);
+function untrace_all() {
+	do_call("monitor", "trace", {drop: true});
 }
 
-function onabort() {
-	disconnect("error");
-}
-
-function start_autoscroll(val) {
-	at("autoscroll").textContent = (autoscroll = val) ? "Stop scroll" : "Start scroll";
-}
-
-function toggle_autoscroll() {
-	start_autoscroll(!autoscroll);
-}
-
-function add_separator() {
-	var x = document.importNode(t_separator, true);
-	trace_events_node.append(x);
-	if (autoscroll)
-		x.scrollIntoView();
-	if (msgs) {
-		x = document.importNode(t_separator, true);
-		logmsgs_node.append(x);
-		if (autoscroll)
-			x.scrollIntoView();
+function do_call(api, verb, request, onreply) {
+	if (afbws) {
+		var call = api + "/" + verb + "(" + JSON.stringify(request, null, 1) + ")";
+		add_logmsg("send request", call, "call");
+		afbws.call(api, verb, [request],
+			function(code, args) {
+				add_logmsg("receive ", call + " -> " + String(code) + ": " + JSON.stringify(args, null, 1), code >= 0 ? "retok" : "reterr");
+				if (onreply) {
+					var args = args[0];
+					if (args.jtype == "afb-reply")
+						args = args.response;
+					onreply(args);
+				}
+			});
 	}
-}
-
-function start_logmsgs(val) {
-	at("stopmsgs").textContent = (msgs = val) ? "Stop logs" : "Get logs";
-}
-
-function toggle_logmsgs() {
-	start_logmsgs(!msgs);
-}
-
-function drop_all_logmsgs() {
-	logmsgs_node.innerHTML = "";
-}
-
-function drop_all_trace_events() {
-	trace_events_node.innerHTML = "";
-}
-
-function add_logmsg(tag, content, add) {
-	if (!msgs) return;
-	var x = document.importNode(t_logmsg, true);
-	get(".tag", x).textContent = tag;
-	get(".content", x).textContent = content;
-	get(".close", x).onclick = function(evt){x.remove();};
-	if (add)
-		x.className = x.className + " " + add;
-	logmsgs_node.append(x);
-	if (autoscroll)
-		x.scrollIntoView();
-}
-
-function add_error(tag, obj) {
-	add_logmsg(tag, JSON.stringify(obj, null, 1), "error");
-}
-
-function on_error_apis(obj) {
-	add_error("can't get apis", obj);
-}
-
-function do_call(api_verb, request, onsuccess, onerror) {
-	var call = api_verb + "(" + JSON.stringify(request, null, 1) + ")";
-	add_logmsg("send request", call, "call");
-	ws.call(api_verb, request).then(
-		function(obj){
-			add_logmsg("receive success", call + " -> " + JSON.stringify(obj, null, 1), "retok");
-			if (onsuccess)
-				onsuccess(obj);
-		},
-		function(obj){
-			add_logmsg("receive error", call + " -> ", JSON.stringify(obj, null, 1), "reterr");
-			if (onerror)
-				onerror(obj);
-		});
 }
 
 /* show all verbosities */
 function on_got_verbosities(obj) {
 	inhibit = true;
-	_.each(obj.response.verbosity, function(verbosity, api_name){
+	_.each(obj.verbosity, function(verbosity, api_name) {
 		if (api_name == "monitor") return;
-		var node = api_name ? apis[api_name].node : at("common");
+		var node = !api_name ? at("common") : api_name in apis ? apis[api_name].node : false;
 		if (node)
 			get(".verbosity option[value='"+verbosity+"']", node).selected = true;
 	});
@@ -276,8 +379,105 @@ function set_verbosity(evt) {
 		req.verbosity = obj.value;
 	}
 	inhibit = false;
-	do_call("monitor/set", req);
-	do_call("monitor/get", {verbosity:true}, on_got_verbosities);
+	do_call("monitor", "set", req);
+	do_call("monitor", "get", {verbosity:true}, on_got_verbosities);
+}
+
+/* creates an api object for the api of 'name' and return it */
+function create_api(name) {
+	var api = {
+		node: document.importNode(t_api, true),
+		verbs: {},
+		name: name
+	};
+	api.node.API = api;
+	api.node.dataset.apiname = name;
+	api.vnode = get(".verbs", api.node);
+	get(".name", api.node).textContent = name;
+	var s = get(".verbosity select", api.node);
+	s.API = api;
+	s.onchange = set_verbosity;
+	for_all_nodes(api.node, ".opclo", function(n){n.onclick = on_toggle_opclo});
+	for_all_nodes(api.node, ".opclo ~ :not(.closedoff)", function(n){n.onclick = on_toggle_opclo});
+	for_all_nodes(api.node, ".trace-item input", function(n){n.onchange = on_trace_change});
+	return api;
+}
+
+function fill_api_for_info_v2(api, desc) {
+	get(".desc", api.node).textContent = desc.info || "";
+	_.each(desc.verbs, function(verb_desc){
+		var verb_name = verb_desc.name;
+		var verb = api.verbs[verb_name];
+		if (!verb) {
+			verb = {
+				node: document.importNode(t_verb, true),
+				name: verb_name,
+				api: api
+			};
+			verb.node.VERB = verb;
+			verb.node.dataset.verb = verb_name;
+			api.verbs[verb_name] = verb;
+			get(".name", verb.node).textContent = verb_name;
+			get(".desc", verb.node).textContent = verb_desc.info || "";
+			if (show_perms)
+				get(".perm", verb.node).textContent = verb_desc.auth || "";
+			api.vnode.append(verb.node);
+		}
+	});
+}
+
+function fill_api_for_legacy_description(api, desc) {
+	get(".desc", api.node).textContent = desc.info.description || "";
+	_.each(desc.paths, function(verb_desc, path_name){
+		var verb_name = path_name.substring(1);
+		var verb = api.verbs[verb_name];
+		if (!verb) {
+			verb = {
+				node: document.importNode(t_verb, true),
+				name: verb_name,
+				api: api
+			};
+			verb.node.VERB = verb;
+			verb.node.dataset.verb = verb_name;
+			api.verbs[verb_name] = verb;
+			get(".name", verb.node).textContent = verb_name;
+			var g = verb_desc.get ||{};
+			var r = g["responses"] || {};
+			var t = r["200"] || {};
+			var d = t.description || "";
+			get(".desc", verb.node).textContent = d;
+			if (show_perms) {
+				var p = g["x-permissions"] || "";
+				get(".perm", verb.node).textContent = p ? JSON.stringify(p, null, 1) : "";
+			}
+			api.vnode.append(verb.node);
+		}
+	});
+}
+
+function fill_api(api, desc) {
+	if (desc === true) {
+		get(".desc", api.node).textContent = "in progress...";
+		do_call(api.name, "info", true, function(desc) {
+			fill_api_for_info_v2(api, desc);
+		});
+	}
+	else if (typeof desc == 'string') {
+		get(".desc", api.node).textContent = "Alias of " + String(desc);
+	}
+	else if (desc === null) {
+		get(".desc", api.node).textContent = "?? unrecoverable ??";
+	}
+	else {
+		switch (desc.$shema) {
+		case 'afb-api-info/v2':
+			fill_api_for_info_v2(api, desc);
+			break;
+		default:
+			fill_api_for_legacy_description(api, desc);
+			break;
+		}
+	}
 }
 
 /* show all apis */
@@ -286,61 +486,19 @@ function on_got_apis(obj) {
 	var saved_apis = apis;
 	apis = {};
 	apis_node.innerHTML = "";
-	_.each(obj.response.apis, function(api_desc, api_name){
+	_.each(obj.apis, function(api_desc, api_name) {
 		if (api_name == "monitor") return;
-		var api = saved_apis[api_name];
-		if (!api) {
-			/* create the node */
-			api = {
-				node: document.importNode(t_api, true),
-				verbs: {},
-				name: api_name
-			};
-			api.node.API = api;
-			api.node.dataset.apiname = api_name;
-			api.vnode = get(".verbs", api.node);
-			get(".name", api.node).textContent = api_name;
-			var s = get(".verbosity select", api.node);
-			s.API = api;
-			s.onchange = set_verbosity;
-			for_all_nodes(api.node, ".opclo", function(n){n.onclick = on_toggle_opclo});
-			for_all_nodes(api.node, ".opclo ~ :not(.closedoff)", function(n){n.onclick = on_toggle_opclo});
-			for_all_nodes(api.node, ".trace-item input", function(n){n.onchange = on_trace_change});
-		} else {
-			/* reactivate the expected traces */
-			for_all_nodes(api.node, ".trace-box", update_trace_box);
-		}
+
+		/* get the api node */
+		var api = saved_apis[api_name]
+		       || create_api(api_name);
+
+		/* reactivate the expected traces */
+		for_all_nodes(api.node, ".trace-box", update_trace_box);
+
+		/* record in new set */
 		apis[api_name] = api;
-		if (api_desc == null) {
-			get(".desc", api.node).textContent = "?? unrecoverable ??";
-		} else {
-			get(".desc", api.node).textContent = api_desc.info.description || "";
-			_.each(api_desc.paths, function(verb_desc, path_name){
-				var verb_name = path_name.substring(1);
-				var verb = api.verbs[verb_name];
-				if (!verb) {
-					verb = {
-						node: document.importNode(t_verb, true),
-						name: verb_name,
-						api: api
-					};
-					verb.node.VERB = verb;
-					verb.node.dataset.verb = verb_name;
-					api.verbs[verb_name] = verb;
-					get(".name", verb.node).textContent = verb_name;
-					var g = verb_desc.get ||{};
-					var r = g["responses"] || {};
-					var t = r["200"] || {};
-					var d = t.description || "";
-					get(".desc", verb.node).textContent = d;
-					if (show_perms) {
-						var p = g["x-permissions"] || "";
-						get(".perm", verb.node).textContent = p ? JSON.stringify(p, null, 1) : "";
-					}
-					api.vnode.append(verb.node);
-				}
-			});
-		}
+		fill_api(api, api_desc);
 		apis_node.append(api.node);
 	});
 	inhibit = false;
@@ -367,13 +525,13 @@ function set_trace_box(node, clear) {
 	var value = false;
 	for_all_nodes(node, "input", function(n){ if (n.checked) value = n.value; });
 	if (clear)
-		do_call("monitor/trace", {drop: {tag: tag}});
+		do_call("monitor", "trace", {drop: {tag: tag}});
 	if (value != "no") {
 		var spec = {tag: tag, name: "trace"};
 		spec[node.dataset.trace] = value;
 		if (api.dataset.apiname != "*")
 			spec.apiname = api.dataset.apiname;
-		do_call("monitor/trace", {add: spec});
+		do_call("monitor", "trace", {add: spec});
 	}
 }
 
@@ -437,17 +595,19 @@ function makeobj(obj, deep, ekey, eobj) {
 	return node;
 }
 
-function gotevent(obj) {
-	if (obj.event != "monitor/trace")
-		add_logmsg("unexpected event!", JSON.stringify(obj, null, 1), "event");
+function gotevent(obj, name) {
+	obj = obj[0];
+	if (name != "monitor/trace")
+		add_logmsg("unexpected event "+name+" !", JSON.stringify(obj, null, 1), "event");
 	else {
 		add_logmsg("trace event", JSON.stringify(obj, null, 1), "trace");
+		if (obj.jtype == 'afb-event')
+			obj = obj.data;
 		gottraceevent(obj);
 	}
 }
 
-function gottraceevent(obj) {
-	var data = obj.data;
+function gottraceevent(data) {
 	var type = data.type;
 	var desc = data[type];
 	if (!show_monitor_events) {
@@ -455,7 +615,7 @@ function gottraceevent(obj) {
 			return;
 	}
 	var x = document.importNode(t_traceevent, true);
-	x.dataset.event = obj;
+	x.dataset.event = data;
 	get(".close", x).onclick = function(evt){x.remove();};
 	x.className = x.className + " " + type;
 	get(".time", x).textContent = data.time;
@@ -470,36 +630,11 @@ function gottraceevent(obj) {
 	if ("data" in data)
 		makeobjitem(tab, 2, "data", data.data);
 	get(".content", x).append(tab);
-	trace_events_node.append(x);
-	if (autoscroll)
-		x.scrollIntoView();
-}
-
-function class_toggle(node, assoc, defval) {
-	var matched = false;
-	var cs = node.className.split(" ").map(
-		function(x){
-			if (!matched && (x in assoc)) {
-				matched = true;
-				return assoc[x];
-			}
-			return x == defval ? "" : x;
-		}).join(" ");
-	if (!matched && defval)
-		cs = cs + " " + defval;
-	node.className = cs;
+	trace_events_add(x);
 }
 
 function toggle_opened_closed(node, defval) {
 	class_toggle(node, { closed: "opened", opened: "closed" }, defval);
-}
-
-function on_toggle_traceevent(evt) {
-	if (getSelection() != "") return;
-	var node = evt.target;
-	while(node && node.parentElement != trace_events_node)
-		node = node.parentElement;
-	node && toggle_opened_closed(node);
 }
 
 function obj2html(json) {
@@ -525,44 +660,8 @@ function obj2html(json) {
 		});
 }
 
-function makecss()
-{
-	var i, l, a, links, x;
 
-	x = { idx: 0, byidx: [], byname: {}, names: [] };
-	links = document.getElementsByTagName("link");
-	for (i = 0 ; i < links.length ; i++) {
-		l = links[i];
-		if (l.title && l.rel.indexOf( "stylesheet" ) != -1) {
-			if (!(l.title in x.byname)) {
-				x.byname[l.title] = x.byidx.length;
-				x.names.push(l.title);
-				x.byidx.push([]);
-			}
-			x.byidx[x.byname[l.title]].push(l);
-		}
-	}
 
-	x.set = function(id) {
-		if (id in x.byname)
-			id = x.byname[id];
-		if (id in x.byidx) {
-			var i, j, a, b;
-			x.idx = id;
-			a = x.byidx;
-			for (i = 0 ; i < a.length ; i++) {
-				b = a[i];
-				for (j = 0 ; j < b.length ; j++)
-					b[j].disabled = i != id;
-			}
-		}
-	};
 
-	x.next = function() {
-		x.set((x.idx + 1) % x.byidx.length);
-	};
 
-	x.set(0);
-	return x;
-}
 

@@ -1,5 +1,7 @@
+<!doctype html>
 <html>
 <head>
+    <meta charset="UTF-8" />
 <!--
  * Copyright (C) 2015-2026 IoT.bzh Company
  * Author: José Bollo <jose.bollo@iot.bzh>
@@ -27,10 +29,12 @@
     <link href="monitor-demo.css" rel="stylesheet" title="demo">
     <link href="monitor-pastel.css" rel="alternate stylesheet" title="pastel">
     <script type="text/javascript" src="underscore-umd-min.js"></script>
-    <script type="text/javascript" src="AFB.js"></script>
-    <script type="text/javascript" src="monitor.js"></script>
+    <script type="module">
+        import { init } from './monitor.js';
+        document.body.onload = init;
+    </script>
 
-<body id="root" class="-flex-v off" onload="init();">
+  <body id="root" class="-flex-v off">
   <div id="head" class="clearfix">
     <div id="logo"></div>
     <div id="connected">Not Connected</div>

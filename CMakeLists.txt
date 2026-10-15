@@ -11,7 +11,7 @@
 #  a written agreement between you and The IoT.bzh Company. For licensing terms
 #  and conditions see https://www.iot.bzh/terms-conditions. For further
 #  information use the contact form at https://www.iot.bzh/contact.
-# 
+#
 # GNU General Public License Usage
 #  Alternatively, this file may be used under the terms of the GNU General
 #  Public license version 3. This license is as published by the Free Software
@@ -40,15 +40,12 @@ install(
   FILES
 
     src/AFB2.js
-    src/AFB.js
     src/background-iot.bzh.jpeg
     src/cross.png
     src/down.png
     src/favicon.ico
     src/index.html
     src/iot-bzh-logo-small.png
-    src/monitor2.html
-    src/monitor2.js
     src/monitor-base.css
     src/monitor-demo.css
     src/monitor.html

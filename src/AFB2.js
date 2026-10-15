@@ -633,7 +633,8 @@ class reader {
   stringz(length) {
     if (length == 0)
       return null;
-    var x = utf8Decoder.decode(this.subview(length - 1));
+    var dv = new DataView(this.view.buffer, this.view.byteOffset + this.pos, length - 1);
+    var x = utf8Decoder.decode(dv);
     this.pos += length;
     return x;
   }
